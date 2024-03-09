@@ -1,0 +1,43 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Current File",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/data/jong980812/project/cil/CODA-Prompt/run.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config","configs/ucf-101_prompt.yaml",
+                "--gpuid","0", //"1","2","3","4","5","6","7",
+                "--repeat","1",
+                "--overwrite","0",
+                "--learner_type","prompt",
+                "--learner_name","CODA_video",
+                "--prompt_param","100","8","0.0",
+                "--log_dir","/data/jong980812/project/cil/CODA-Prompt/debug/ucf101_coda_10task",
+                "--anno_path","/data/jong980812/project/cil/CODA-Prompt/UCF101_data_10.pkl"
+            ]
+        },
+        {
+            "name": "cifar",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/data/jong980812/project/cil/CODA-Prompt/run.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--config","configs/cifar-100_prompt.yaml",
+                "--gpuid","0",
+                "--repeat","1",
+                "--overwrite","0",
+                "--learner_type","prompt",
+                "--learner_name","L2P",
+                "--prompt_param","30","20","-1",
+                "--log_dir","/data/jong980812/project/cil/CODA-Prompt/debug",
+            ]
+        }
+    ]
+}

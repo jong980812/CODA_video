@@ -1,10 +1,10 @@
-dataset: CIFAR100
-first_split_size: 10
+dataset: UCF101
+first_split_size: 11
 other_split_size: 10
 schedule:
-- 20
+- 30
 schedule_type: cosine
-batch_size: 128
+batch_size: 48
 optimizer: Adam
 lr: 0.001
 momentum: 0.9
@@ -12,7 +12,7 @@ weight_decay: 0
 model_type: zoo
 model_name: vit_pt_imnet
 max_task: -1
-dataroot: data
+dataroot: /local_datasets/ucf101/videos
 workers: 8
 validation: False
 train_aug: True

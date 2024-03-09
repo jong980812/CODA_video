@@ -63,11 +63,14 @@ class Attention(nn.Module):
     
     def forward(self, x, register_hook=False, prompt=None):
         B, N, C = x.shape
+        T= 8
         qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]   # make torchscript happy (cannot use tensor as tuple)
 
         if prompt is not None:
-            pk, pv = prompt
+            pk, pv = prompt# video 로 확장시켜야함.
+            pk = pk.repeat(T, 1, 1)
+            pv = pv.repeat(T, 1, 1)
             pk = pk.reshape(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
             pv = pv.reshape(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
             k = torch.cat((pk,k), dim=2)
@@ -108,7 +111,7 @@ class Block(nn.Module):
         return x
 
     
-class VisionTransformer(nn.Module):
+class VisionTransformer_video(nn.Module):
     """ Vision Transformer
     A PyTorch impl of : `An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale`  -
         https://arxiv.org/abs/2010.11929
@@ -176,9 +179,11 @@ class VisionTransformer(nn.Module):
 
     def forward(self, x, register_blk=-1, prompt=None, q=None, train=False, task_id=None):
         B = x.shape[0]
+        B, C, T, H, W = x.shape #!  EX) Batch size(10), Channel(3), Frames(8), Height(224), Width(224)
+        x = rearrange(x, 'b c t h w -> (b t) c h w')
         x = self.patch_embed(x)
 
-        cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
+        cls_tokens = self.cls_token.expand(B*T, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
         x = torch.cat((cls_tokens, x), dim=1)
   
         x = x + self.pos_embed[:,:x.size(1),:]
@@ -207,6 +212,8 @@ class VisionTransformer(nn.Module):
             # if i == 11: x = x.detach()
 
         x = self.norm(x)
+        x = rearrange(x, '(b t) n d -> b t n d',b=B,t=T)
+        x = x.mean(1)
         
         return x, prompt_loss
 
@@ -216,7 +223,7 @@ class VisionTransformer(nn.Module):
         
 
 @torch.no_grad()
-def _load_weights(model: VisionTransformer, checkpoint_path: str, prefix: str = ''):
+def _load_weights(model: VisionTransformer_video, checkpoint_path: str, prefix: str = ''):
     """ Load weights from .npz checkpoints for official Google Brain Flax implementation
     """
     import numpy as np

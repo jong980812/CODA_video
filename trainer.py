@@ -47,6 +47,11 @@ class Trainer:
             num_classes = 345
             self.dataset_size = [224,224,3]
             self.top_k = 1
+        elif args.dataset=='UCF101':
+            Dataset = dataloaders.iUCF101
+            self.dataset_size = [224,224,3]
+            self.top_k = 1
+            num_classes = 101
         else:
             raise ValueError('Dataset not implemented!')
 
@@ -54,10 +59,32 @@ class Trainer:
         if args.upper_bound_flag:
             args.other_split_size = num_classes
             args.first_split_size = num_classes
+        if args.anno_path is not None:
+            print(f"*****Load {args.anno_path} *****")
+            # Load PKL
+            import pickle
+            with open(args.anno_path, 'rb') as file:
+                anno_list = pickle.load(file)
+            class_names = []
+            for task in anno_list['train']:
+                class_names+=list(task.keys())
+            # txt 파일 내용을 읽어들여 활동 이름과 숫자를 매핑하는 딕셔너리를 생성
+            activity_to_number = {}
+            with open('/data/jong980812/project/cil/CODA-Prompt/ucf101_class_list.txt', 'r') as file:  # 'your_file_path.txt'는 실제 txt 파일의 경로로 대체해야 합니다.
+                for line in file:
+                    number, activity_name = line.strip().split(' ', 1)
+                    activity_to_number[activity_name] = int(number)
 
+            # 주어진 리스트의 각 항목을 해당하는 숫자로 변환
+            activities_numbers = [activity_to_number[activity] for activity in class_names]
+            class_order = activities_numbers
+            class_order_logits = activities_numbers
+        #!original
+        else:
         # load tasks
-        class_order = np.arange(num_classes).tolist()
-        class_order_logits = np.arange(num_classes).tolist()
+            class_order = np.arange(num_classes).tolist()# class 순서대로 넘버 적혀있음.
+            class_order_logits = np.arange(num_classes).tolist()
+        
         if self.seed > 0 and args.rand_split:
             print('=============================================')
             print('Shuffling....')
@@ -66,22 +93,28 @@ class Trainer:
             random.shuffle(class_order)
             print('post-shuffle:' + str(class_order))
             print('=============================================')
-        self.tasks = []
+        self.tasks = []#! 클래스 number 들어감. 이중리스트
         self.tasks_logits = []
+        
         p = 0
         while p < num_classes and (args.max_task == -1 or len(self.tasks) < args.max_task):
             inc = args.other_split_size if p > 0 else args.first_split_size
             self.tasks.append(class_order[p:p+inc])
             self.tasks_logits.append(class_order_logits[p:p+inc])
             p += inc
-        self.num_tasks = len(self.tasks)
+        self.num_tasks = len(self.tasks)#!
+        '''
+        [[0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 
+        [10, 11, 12, 13, 14, 15, 16, 17, 18, 19], 
+        [20, 21, 22, 23, 24, 25, 26, 27, 28, 29],
+        '''
         self.task_names = [str(i+1) for i in range(self.num_tasks)]
 
         # number of tasks to perform
         if args.max_task > 0:
             self.max_task = min(args.max_task, len(self.task_names))
         else:
-            self.max_task = len(self.task_names)
+            self.max_task = len(self.task_names)#! 그냥 전체 태스크 들어감.
 
         # datasets and dataloaders
         k = 1 # number of transforms per image
@@ -89,14 +122,27 @@ class Trainer:
             resize_imnet = True
         else:
             resize_imnet = False
-        train_transform = dataloaders.utils.get_transform(dataset=args.dataset, phase='train', aug=args.train_aug, resize_imnet=resize_imnet)
-        test_transform  = dataloaders.utils.get_transform(dataset=args.dataset, phase='test', aug=args.train_aug, resize_imnet=resize_imnet)
-        self.train_dataset = Dataset(args.dataroot, train=True, lab = True, tasks=self.tasks,
-                            download_flag=True, transform=train_transform, 
-                            seed=self.seed, rand_split=args.rand_split, validation=args.validation)
-        self.test_dataset  = Dataset(args.dataroot, train=False, tasks=self.tasks,
-                                download_flag=False, transform=test_transform, 
+        if args.dataset!='UCF101':
+            train_transform = dataloaders.utils.get_transform(dataset=args.dataset, phase='train', aug=args.train_aug, resize_imnet=resize_imnet)
+            test_transform  = dataloaders.utils.get_transform(dataset=args.dataset, phase='test', aug=args.train_aug, resize_imnet=resize_imnet)
+            self.train_dataset = Dataset(args.dataroot, train=True, lab = True, tasks=self.tasks,
+                                download_flag=True, transform=train_transform, 
                                 seed=self.seed, rand_split=args.rand_split, validation=args.validation)
+            self.test_dataset  = Dataset(args.dataroot, train=False, tasks=self.tasks,
+                                    download_flag=False, transform=test_transform, 
+                                    seed=self.seed, rand_split=args.rand_split, validation=args.validation)
+        else:
+            # train_transform = dataloaders.utils.get_transform(dataset=args.dataset, phase='train', aug=args.train_aug, resize_imnet=resize_imnet)
+            anno_path = '/data/jong980812/project/cil/CODA-Prompt/ucf101_train.csv'
+            self.train_dataset = Dataset(args.dataroot, train=True, lab = True, tasks=self.tasks,
+                                download_flag=True, 
+                                seed=self.seed, rand_split=args.rand_split, validation=args.validation,args = args,anno_path=anno_path)
+            anno_path = '/data/jong980812/project/cil/CODA-Prompt/ucf101_test.csv'
+            self.test_dataset  = Dataset(args.dataroot, train=False, tasks=self.tasks,
+                                    download_flag=False,  
+                                    seed=self.seed, rand_split=args.rand_split, validation=args.validation, args = args, anno_path=anno_path)
+        # self.train_dataset = 
+        # self.test_dataset =
 
         # for oracle
         self.oracle_flag = args.oracle_flag
@@ -179,7 +225,7 @@ class Trainer:
             self.learner.add_valid_output_dim(self.add_dim)
 
             # load dataset with memory
-            self.train_dataset.append_coreset(only=False)
+            # self.train_dataset.append_coreset(only=False)
 
             # load dataloader
             train_loader = DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, drop_last=True, num_workers=int(self.workers))
