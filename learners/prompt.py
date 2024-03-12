@@ -25,7 +25,7 @@ class Prompt(NormalNN):
     def update_model(self, inputs, targets):
 
         # logits
-        logits, prompt_loss = self.model(inputs, train=True)
+        logits, prompt_loss,q = self.model(inputs, train=True)
         logits = logits[:,:self.valid_out_dim]
 
         # ce with heuristic
@@ -41,7 +41,7 @@ class Prompt(NormalNN):
         total_loss.backward()
         self.optimizer.step()
 
-        return total_loss.detach(), logits
+        return total_loss.detach(), logits,q
 
     # sets model optimizers
     def init_optimizer(self):
@@ -151,4 +151,23 @@ class CODA_video(Prompt):
     def create_model(self):
         cfg = self.config
         model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'coda_video',prompt_param=self.prompt_param)
+        return model
+class CODA_adapter(Prompt):
+
+    def __init__(self, learner_config):
+        super(CODA_adapter, self).__init__(learner_config)
+
+    def create_model(self):
+        cfg = self.config
+        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'coda_adapter',prompt_param=self.prompt_param)
+        return model
+
+class L2P_adapter(Prompt):
+
+    def __init__(self, learner_config):
+        super(L2P_adapter, self).__init__(learner_config)
+
+    def create_model(self):
+        cfg = self.config
+        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'l2p_adapter',prompt_param=self.prompt_param)
         return model

@@ -47,7 +47,7 @@ mkdir -p $OUTDIR
 #    arg 3 = -1 -> shallow, 1 -> deep
 python -u run.py --config $CONFIG --gpuid $GPUID --repeat $REPEAT --overwrite $OVERWRITE \
     --learner_type prompt --learner_name L2P \
-    --prompt_param 30 20 -1 \
+    --prompt_param 60 4 -1 \
     --log_dir ${OUTDIR}/l2p++
 
 # # FT

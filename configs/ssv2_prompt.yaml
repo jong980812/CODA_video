@@ -1,19 +1,19 @@
-dataset: UCF101
-first_split_size: 6
-other_split_size: 5
+dataset: SSV2
+first_split_size: 84
+other_split_size: 10
 schedule:
 - 30
 schedule_type: cosine
 batch_size: 144
 optimizer: Adam
-lr: 0.003
+lr: 0.001
 momentum: 0.9
-weight_decay: 0
+weight_decay: 0.05
 model_type: zoo
 model_name: vit_pt_imnet
 max_task: -1
-dataroot: /local_datasets/ucf101/videos
-workers: 8
+dataroot: /local_datasets/something-something/something-something-v2-mp4
+workers: 10
 validation: False
 train_aug: True
 rand_split: True

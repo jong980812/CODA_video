@@ -52,6 +52,11 @@ class Trainer:
             self.dataset_size = [224,224,3]
             self.top_k = 1
             num_classes = 101
+        elif args.dataset=='SSV2':
+            Dataset = dataloaders.iSSV2
+            self.dataset_size = [224,224,3]
+            self.top_k = 1
+            num_classes = 174
         else:
             raise ValueError('Dataset not implemented!')
 
@@ -59,6 +64,7 @@ class Trainer:
         if args.upper_bound_flag:
             args.other_split_size = num_classes
             args.first_split_size = num_classes
+        
         if args.anno_path is not None:
             print(f"*****Load {args.anno_path} *****")
             # Load PKL
@@ -70,9 +76,9 @@ class Trainer:
                 class_names+=list(task.keys())
             # txt 파일 내용을 읽어들여 활동 이름과 숫자를 매핑하는 딕셔너리를 생성
             activity_to_number = {}
-            with open('/data/jong980812/project/cil/CODA-Prompt/ucf101_class_list.txt', 'r') as file:  # 'your_file_path.txt'는 실제 txt 파일의 경로로 대체해야 합니다.
+            with open(f'./anno_list/{args.dataset}/class_list.txt', 'r') as file:  # 'your_file_path.txt'는 실제 txt 파일의 경로로 대체해야 합니다.
                 for line in file:
-                    number, activity_name = line.strip().split(' ', 1)
+                    number, activity_name = line.strip().split(',', 1)
                     activity_to_number[activity_name] = int(number)
 
             # 주어진 리스트의 각 항목을 해당하는 숫자로 변환
@@ -122,22 +128,26 @@ class Trainer:
             resize_imnet = True
         else:
             resize_imnet = False
-        if args.dataset!='UCF101':
+            
+        if args.dataset!='UCF101' and args.dataset!='SSV2':
             train_transform = dataloaders.utils.get_transform(dataset=args.dataset, phase='train', aug=args.train_aug, resize_imnet=resize_imnet)
             test_transform  = dataloaders.utils.get_transform(dataset=args.dataset, phase='test', aug=args.train_aug, resize_imnet=resize_imnet)
             self.train_dataset = Dataset(args.dataroot, train=True, lab = True, tasks=self.tasks,
                                 download_flag=True, transform=train_transform, 
                                 seed=self.seed, rand_split=args.rand_split, validation=args.validation)
+            # self.train_dataset  = Dataset(args.dataroot, train=False, tasks=self.tasks,
+            #                         download_flag=False, transform=test_transform, 
+            #                         seed=self.seed, rand_split=args.rand_split, validation=args.validation)
             self.test_dataset  = Dataset(args.dataroot, train=False, tasks=self.tasks,
                                     download_flag=False, transform=test_transform, 
                                     seed=self.seed, rand_split=args.rand_split, validation=args.validation)
         else:
             # train_transform = dataloaders.utils.get_transform(dataset=args.dataset, phase='train', aug=args.train_aug, resize_imnet=resize_imnet)
-            anno_path = '/data/jong980812/project/cil/CODA-Prompt/ucf101_train.csv'
+            anno_path = f'./anno_list/{args.dataset}/train.csv'
             self.train_dataset = Dataset(args.dataroot, train=True, lab = True, tasks=self.tasks,
                                 download_flag=True, 
                                 seed=self.seed, rand_split=args.rand_split, validation=args.validation,args = args,anno_path=anno_path)
-            anno_path = '/data/jong980812/project/cil/CODA-Prompt/ucf101_test.csv'
+            anno_path = f'./anno_list/{args.dataset}/test.csv'
             self.test_dataset  = Dataset(args.dataroot, train=False, tasks=self.tasks,
                                     download_flag=False,  
                                     seed=self.seed, rand_split=args.rand_split, validation=args.validation, args = args, anno_path=anno_path)

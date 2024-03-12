@@ -12,7 +12,8 @@ import contextlib
 import os
 import copy
 from utils.schedulers import CosineSchedule
-
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 class NormalNN(nn.Module):
     '''
     Normal Neural Network with SGD for classification
@@ -82,7 +83,9 @@ class NormalNN(nn.Module):
             self.log('Optimizer is reset!')
             self.init_optimizer()
         if need_train:
-            
+            #!
+            query_tokens = []
+            #!
             # data weighting
             self.data_weighting(train_dataset)
             losses = AverageMeter()
@@ -107,8 +110,11 @@ class NormalNN(nn.Module):
                         y = y.cuda()
                     
                     # model update
-                    loss, output= self.update_model(x, y)
-
+                    loss, output,q= self.update_model(x, y)
+                    #!
+                    # q = q.cpu().numpy()
+                    # query_tokens.append(q)
+                    #!
                     # measure elapsed time
                     batch_time.update(batch_timer.toc())  
                     batch_timer.tic()
@@ -118,7 +124,19 @@ class NormalNN(nn.Module):
                     accumulate_acc(output, y, task, acc, topk=(self.top_k,))
                     losses.update(loss,  y.size(0)) 
                     batch_timer.tic()
+                # query_tokens = np.vstack(query_tokens)
+                # tsne = TSNE(n_components=2, random_state=42)
+                # query_tokens_2d = tsne.fit_transform(query_tokens)
 
+                # # 시각화
+                # plt.figure(figsize=(40, 24))
+                # plt.scatter(query_tokens_2d[:, 0], query_tokens_2d[:, 1])
+                # plt.title("Query Tokens T-SNE Visualization")
+                # plt.xlabel("Component 1")
+                # plt.ylabel("Component 2")
+
+                # # 시각화 결과를 파일로 저장
+                # plt.savefig('query_tokens_tsne_visualization.png', dpi=800)
                 # eval update
                 self.log('Epoch:{epoch:.0f}/{total:.0f}'.format(epoch=self.epoch+1,total=self.config['schedule'][-1]))
                 self.log(' * Loss {loss.avg:.3f} | Train Acc {acc.avg:.3f}'.format(loss=losses,acc=acc))

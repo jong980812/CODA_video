@@ -1,0 +1,174 @@
+1,Approaching something with your camera
+2,Attaching something to something
+3,Bending something so that it deforms
+4,Bending something until it breaks
+5,Burying something in something
+6,Closing something
+7,Covering something with something
+8,Digging something out of something
+9,Dropping something behind something
+10,Dropping something in front of something
+11,Dropping something into something
+12,Dropping something next to something
+13,Dropping something onto something
+14,Failing to put something into something because something does not fit
+15,Folding something
+16,Hitting something with something
+17,Holding something
+18,Holding something behind something
+19,Holding something in front of something
+20,Holding something next to something
+21,Holding something over something
+22,Laying something on the table on its side not upright
+23,Letting something roll along a flat surface
+24,Letting something roll down a slanted surface
+25,Letting something roll up a slanted surface so it rolls back down
+26,Lifting a surface with something on it but not enough for it to slide down
+27,Lifting a surface with something on it until it starts sliding down
+28,Lifting something up completely without letting it drop down
+29,Lifting something up completely then letting it drop down
+30,Lifting something with something on it
+31,Lifting up one end of something without letting it drop down
+32,Lifting up one end of something then letting it drop down
+33,Moving away from something with your camera
+34,Moving part of something
+35,Moving something across a surface until it falls down
+36,Moving something across a surface without it falling down
+37,Moving something and something away from each other
+38,Moving something and something closer to each other
+39,Moving something and something so they collide with each other
+40,Moving something and something so they pass each other
+41,Moving something away from something
+42,Moving something away from the camera
+43,Moving something closer to something
+44,Moving something down
+45,Moving something towards the camera
+46,Moving something up
+47,Opening something
+48,Picking something up
+49,Piling something up
+50,Plugging something into something
+51,Plugging something into something but pulling it right out as you remove your hand
+52,Poking a hole into some substance
+53,Poking a hole into something soft
+54,Poking a stack of something so the stack collapses
+55,Poking a stack of something without the stack collapsing
+56,Poking something so it slightly moves
+57,Poking something so lightly that it doesn't or almost doesn't move
+58,Poking something so that it falls over
+59,Poking something so that it spins around
+60,Pouring something into something
+61,Pouring something into something until it overflows
+62,Pouring something onto something
+63,Pouring something out of something
+64,Pretending or failing to wipe something off of something
+65,Pretending or trying and failing to twist something
+66,Pretending to be tearing something that is not tearable
+67,Pretending to close something without actually closing it
+68,Pretending to open something without actually opening it
+69,Pretending to pick something up
+70,Pretending to poke something
+71,Pretending to pour something out of something but something is empty
+72,Pretending to put something behind something
+73,Pretending to put something into something
+74,Pretending to put something next to something
+75,Pretending to put something on a surface
+76,Pretending to put something onto something
+77,Pretending to put something underneath something
+78,Pretending to scoop something up with something
+79,Pretending to spread air onto something
+80,Pretending to sprinkle air onto something
+81,Pretending to squeeze something
+82,Pretending to take something from somewhere
+83,Pretending to take something out of something
+84,Pretending to throw something
+85,Pretending to turn something upside down
+86,Pulling something from behind of something
+87,Pulling something from left to right
+88,Pulling something from right to left
+89,Pulling something onto something
+90,Pulling something out of something
+91,Pulling two ends of something but nothing happens
+92,Pulling two ends of something so that it gets stretched
+93,Pulling two ends of something so that it separates into two pieces
+94,Pushing something from left to right
+95,Pushing something from right to left
+96,Pushing something off of something
+97,Pushing something onto something
+98,Pushing something so it spins
+99,Pushing something so that it almost falls off but doesn't
+100,Pushing something so that it falls off the table
+101,Pushing something so that it slightly moves
+102,Pushing something with something
+103,Putting number of something onto something
+104,Putting something and something on the table
+105,Putting something behind something
+106,Putting something in front of something
+107,Putting something into something
+108,Putting something next to something
+109,Putting something on a flat surface without letting it roll
+110,Putting something on a surface
+111,Putting something on the edge of something so it is not supported and falls down
+112,Putting something onto a slanted surface but it doesn't glide down
+113,Putting something onto something
+114,Putting something onto something else that cannot support it so it falls down
+115,Putting something similar to other things that are already on the table
+116,Putting something that can't roll onto a slanted surface so it slides down
+117,Putting something that can't roll onto a slanted surface so it stays where it is
+118,Putting something that cannot actually stand upright upright on the table so it falls on its side
+119,Putting something underneath something
+120,Putting something upright on the table
+121,Putting something something and something on the table
+122,Removing something revealing something behind
+123,Rolling something on a flat surface
+124,Scooping something up with something
+125,Showing a photo of something to the camera
+126,Showing something behind something
+127,Showing something next to something
+128,Showing something on top of something
+129,Showing something to the camera
+130,Showing that something is empty
+131,Showing that something is inside something
+132,Something being deflected from something
+133,Something colliding with something and both are being deflected
+134,Something colliding with something and both come to a halt
+135,Something falling like a feather or paper
+136,Something falling like a rock
+137,Spilling something behind something
+138,Spilling something next to something
+139,Spilling something onto something
+140,Spinning something so it continues spinning
+141,Spinning something that quickly stops spinning
+142,Spreading something onto something
+143,Sprinkling something onto something
+144,Squeezing something
+145,Stacking number of something
+146,Stuffing something into something
+147,Taking one of many similar things on the table
+148,Taking something from somewhere
+149,Taking something out of something
+150,Tearing something into two pieces
+151,Tearing something just a little bit
+152,Throwing something
+153,Throwing something against something
+154,Throwing something in the air and catching it
+155,Throwing something in the air and letting it fall
+156,Throwing something onto a surface
+157,Tilting something with something on it slightly so it doesn't fall down
+158,Tilting something with something on it until it falls off
+159,Tipping something over
+160,Tipping something with something in it over so something in it falls out
+161,Touching (without moving) part of something
+162,Trying but failing to attach something to something because it doesn't stick
+163,Trying to bend something unbendable so nothing happens
+164,Trying to pour something into something but missing so it spills next to it
+165,Turning something upside down
+166,Turning the camera downwards while filming something
+167,Turning the camera left while filming something
+168,Turning the camera right while filming something
+169,Turning the camera upwards while filming something
+170,Twisting (wringing) something wet until water comes out
+171,Twisting something
+172,Uncovering something
+173,Unfolding something
+174,Wiping something off of something

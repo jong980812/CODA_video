@@ -34,7 +34,37 @@ class Mlp(nn.Module):
         x = self.drop(x)
         return x
 
-
+class Adapter(nn.Module):
+    def __init__(self, D_features,act_layer=nn.GELU, skip_connect=True):
+        super().__init__()
+        self.skip_connect = skip_connect
+        self.act = act_layer()
+        
+    def forward(self, x, prompt=None):
+        # x is (BT, HW+1, D)
+        # xs = self.D_fc1(x)
+        # xs = self.act(xs)
+        # xs = self.D_fc2(xs)
+        if prompt is not None:
+            down, up = prompt# pk(len//2,D) pv (len//2,D)
+            down = down.repeat_interleave(8, dim=0)
+            up = up.repeat_interleave(8, dim=0)
+            # pk = pk.repeat(T, 1, 1)
+            # pv = pv.repeat(T, 1, 1)
+            # pk = pk.reshape(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+            # pv = pv.reshape(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
+            # k = torch.cat((pk,k), dim=2)
+            # v = torch.cat((pv,v), dim=2)
+            xs = torch.bmm(x,down.transpose(1,2))
+            xs = self.act(xs)
+            xs = torch.bmm(xs,up)
+        else:
+            return 0
+        if self.skip_connect:
+            x = x + xs
+        else:
+            x = xs
+        return x
 class Attention(nn.Module):
     def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.):
         super().__init__()
@@ -68,7 +98,7 @@ class Attention(nn.Module):
         q, k, v = qkv[0], qkv[1], qkv[2]   # make torchscript happy (cannot use tensor as tuple)
 
         if prompt is not None:
-            pk, pv = prompt# video 로 확장시켜야함.    # B*T, L, D
+            pk, pv = prompt# video 로 확장시켜야함.
             pk = pk.repeat_interleave(8, dim=0)#.repeat(T, 1, 1)
             pv = pv.repeat_interleave(8, dim=0)#.repeat(T, 1, 1)
             pk = pk.reshape(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
@@ -103,15 +133,16 @@ class Block(nn.Module):
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
-
-
+        self.S_Adapter = Adapter(D_features=dim,skip_connect=True)
     def forward(self, x, register_hook=False, prompt=None):
-        x = x + self.drop_path(self.attn(self.norm1(x), register_hook=register_hook, prompt=prompt))
+        ln1 = self.norm1(x)
+        adapter_x = self.S_Adapter(ln1,prompt)
+        x = x + self.drop_path(self.attn(ln1, register_hook=register_hook, prompt=None))+ adapter_x
         x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
 
     
-class VisionTransformer_video(nn.Module):
+class VisionTransformer_adapter(nn.Module):
     """ Vision Transformer
     A PyTorch impl of : `An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale`  -
         https://arxiv.org/abs/2010.11929
@@ -223,7 +254,7 @@ class VisionTransformer_video(nn.Module):
         
 
 @torch.no_grad()
-def _load_weights(model: VisionTransformer_video, checkpoint_path: str, prefix: str = ''):
+def _load_weights(model: VisionTransformer_adapter, checkpoint_path: str, prefix: str = ''):
     """ Load weights from .npz checkpoints for official Google Brain Flax implementation
     """
     import numpy as np

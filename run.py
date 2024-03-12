@@ -41,7 +41,11 @@ def create_args():
     # Config Arg
     parser.add_argument('--config', type=str, default="configs/config.yaml",
                          help="yaml experiment config input")
-    parser.add_argument('--anno_path',type=str,default=None)
+    
+    
+    #! Cutom ARGS
+    parser.add_argument('--anno_path',type=str,default=None,help='There should be train.csv, test.csv')
+    # parser.add_argument('--class_list_path',type=str,default=None)
 
     return parser
 

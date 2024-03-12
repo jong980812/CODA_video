@@ -18,14 +18,15 @@ import pandas as pd
 import dataloaders.video_transforms as video_transforms 
 import dataloaders.volume_transforms as volume_transforms
 from torchvision import transforms
-class iUCF101(data.Dataset):
-    
+
+
+class iSSV2(data.Dataset):
+    """Load your own video classification dataset."""
+
     def __init__(self, root,
                 train=True, transform=None,
                 download_flag=False, lab=True, swap_dset = None, 
                 tasks=None, seed=-1, rand_split=False, validation=False, kfolds=5,args=None,anno_path=None):
-
-        # process rest of args
         self.root = root 
         self.anno_path = anno_path
         self.transform = transform
@@ -116,21 +117,8 @@ class iUCF101(data.Dataset):
                     task_target = [self.targets[i] for i in locs]
                     self.archive.append((task_data.copy(), task_target.copy()))
 
-        # if self.train:
-        #     self.coreset = (np.zeros(0, dtype=self.data.dtype), np.zeros(0, dtype=self.targets.dtype))
 
-    def __getitem__(self, index, simple = False):
-        """
-        Args:
-            index (int): Index
-        Returns:
-            tuple: (image, target) where target is index of the target class
-        """
-        # img, target = self.data[index], self.targets[index]
-
-        # doing this so that it is consistent with all other datasets
-        # to return a PIL Image
-        
+    def __getitem__(self, index):
         if self.train:
             scale_t = 1
             sample = self.data[index]
@@ -156,13 +144,6 @@ class iUCF101(data.Dataset):
                     buffer = self.loadvideo_decord(sample)
             buffer = self.data_transform(buffer)
             return buffer, self.class_mapping[target],self.t
-        #!original    
-        # img = Image.fromarray(img)
-
-        # if self.transform is not None:
-        #     img = self.transform(img)
-
-        # return img, self.class_mapping[target], self.t
 
     def load_dataset(self, t, train=True):
         
@@ -275,7 +256,7 @@ class iUCF101(data.Dataset):
         return buffer
     def loadvideo_decord(self, sample, sample_rate_scale=1):
         """Load video content using Decord"""
-        fname = os.path.join(self.root,sample)+'.avi'
+        fname = os.path.join(self.root,sample)
         if not (os.path.exists(fname)):
             return []
 
