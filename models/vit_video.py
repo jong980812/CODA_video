@@ -68,9 +68,13 @@ class Attention(nn.Module):
         q, k, v = qkv[0], qkv[1], qkv[2]   # make torchscript happy (cannot use tensor as tuple)
 
         if prompt is not None:
-            pk, pv = prompt# video 로 확장시켜야함.    # B*T, L, D
-            pk = pk.repeat_interleave(8, dim=0)#.repeat(T, 1, 1)
-            pv = pv.repeat_interleave(8, dim=0)#.repeat(T, 1, 1)
+            pk, pv = prompt# video 로 확장시켜야함.    # B, L, D
+            if len(pk.shape)<4:
+                pk = pk.repeat_interleave(8, dim=0)#.repeat(T, 1, 1)
+                pv = pv.repeat_interleave(8, dim=0)#.repeat(T, 1, 1)
+            else:
+                pk = pk.reshape(B,-1,C)
+                pv = pv.reshape(B,-1,C)
             pk = pk.reshape(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
             pv = pv.reshape(B, -1, self.num_heads, C // self.num_heads).permute(0, 2, 1, 3)
             k = torch.cat((pk,k), dim=2)
@@ -106,8 +110,21 @@ class Block(nn.Module):
 
 
     def forward(self, x, register_hook=False, prompt=None):
+        BT,N,D = x.shape
+        # if prompt is not None:
         x = x + self.drop_path(self.attn(self.norm1(x), register_hook=register_hook, prompt=prompt))
+            # xt = rearrange(x, '(b t) n d -> t (b n) d', t=8)
+            # xt = self.drop_path(self.attn(self.norm1(xt)))
+            # xt = rearrange(x, 't (b n) d -> (b t) n d', n = N)
+            # x = x + xt
         x = x + self.drop_path(self.mlp(self.norm2(x)))
+        # else:
+        #     x = x + self.drop_path(self.attn(self.norm1(x), register_hook=register_hook, prompt=prompt))
+        #     xt = rearrange(x, '(b t) n d -> t (b n) d', t=8)
+        #     xt = self.drop_path(self.attn(self.norm1(xt)))
+        #     xt = rearrange(x, 't (b n) d -> (b t) n d', n = N)
+        #     x = x + xt
+        #     x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
 
     
@@ -119,7 +136,7 @@ class VisionTransformer_video(nn.Module):
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=True, qk_scale=None, representation_size=None,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0., norm_layer=None, 
-                 ckpt_layer=0):
+                 ckpt_layer=0,frame_prompt=False):
         """
         Args:
             img_size (int, tuple): input image size
@@ -146,7 +163,7 @@ class VisionTransformer_video(nn.Module):
             img_size=img_size, patch_size=patch_size, in_chans=in_chans, embed_dim=embed_dim)
 
         num_patches = self.patch_embed.num_patches
-
+        self.frame_prompt = frame_prompt
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim))
         self.pos_drop = nn.Dropout(p=drop_rate)
@@ -177,7 +194,7 @@ class VisionTransformer_video(nn.Module):
     def no_weight_decay(self):
         return {'pos_embed', 'cls_token'}
 
-    def forward(self, x, register_blk=-1, prompt=None, q=None, train=False, task_id=None):
+    def forward(self, x, register_blk=-1, prompt=None, q=None, train=False, task_id=None,mean = True):
         B = x.shape[0]
         B, C, T, H, W = x.shape #!  EX) Batch size(10), Channel(3), Frames(8), Height(224), Width(224)
         x = rearrange(x, 'b c t h w -> (b t) c h w')
@@ -191,29 +208,46 @@ class VisionTransformer_video(nn.Module):
 
         prompt_loss = torch.zeros((1,), requires_grad=True).cuda()
         for i,blk in enumerate(self.blocks):
-
+            p_list_1 = []
+            p_list_2 = []
             if prompt is not None:
-                if train:
-                    p_list, loss, x = prompt.forward(q, i, x, train=True, task_id=task_id)
-                    prompt_loss += loss
+                if self.frame_prompt:
+                    if train:
+                        B,T,D = q.shape
+                        for j in range(T):
+                            p, loss, x = prompt.forward(q[:,j,:], i, x, train=True, task_id=task_id)# q( B,T,D)
+                            prompt_loss += loss
+                            if p is not None:
+                                p_list_1.append(p[0])
+                                p_list_2.append(p[1])
+                    else:
+                        # p_list, _, x = prompt.forward(q, i, x, train=False, task_id=task_id)
+                        B,T,D = q.shape
+                        for j in range(T):
+                            p, _, x = prompt.forward(q[:,j,:], i, x, train=True, task_id=task_id)# q( B,T,D)
+                            if p is not None:
+                                p_list_1.append(p[0])
+                                p_list_2.append(p[1])
+
+                    if len(p_list_1) > 0:
+                        p_list_1 = torch.stack(p_list_1,dim=1)
+                        p_list_2 = torch.stack(p_list_2,dim=1)
+                        p_list = [p_list_1,p_list_2]
+            #*#######################################################
                 else:
-                    p_list, _, x = prompt.forward(q, i, x, train=False, task_id=task_id)
-                # if p_list is not None and i == 1:
-                #     print(x[0,0,0:10])
-                #     print(p_list[0][0,0,0:10])
-                #     print(apple)
-                # if p_list is not None:
-                #     x = torch.concat((x[:,0,:].unsqueeze(1),p_list[0],p_list[1],x[:,1:,:]), dim=1)
-                #     p_list = None
+                    if train:
+                        p_list, loss, x = prompt.forward(q, i, x, train=True, task_id=task_id)
+                        prompt_loss += loss
+                    else:
+                        p_list, _, x = prompt.forward(q, i, x, train=False, task_id=task_id)
             else:
                 p_list = None
-
             x = blk(x, register_blk==i, prompt=p_list)
             # if i == 11: x = x.detach()
 
         x = self.norm(x)
         x = rearrange(x, '(b t) n d -> b t n d',b=B,t=T)
-        x = x.mean(1)
+        x = x.mean(1) if mean else x
         
         return x, prompt_loss
 

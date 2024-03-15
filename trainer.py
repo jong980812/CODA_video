@@ -22,10 +22,10 @@ class Trainer:
         self.log_dir = args.log_dir
         self.batch_size = args.batch_size
         self.workers = args.workers
-        
+        self.num_test_videos = []
         # model load directory
         self.model_top_dir = args.log_dir
-
+        self.dataset=None
         # select dataset
         self.grayscale_vis = False
         self.top_k = 1
@@ -59,7 +59,7 @@ class Trainer:
             num_classes = 174
         else:
             raise ValueError('Dataset not implemented!')
-
+        self.dataset=args.dataset
         # upper bound flag
         if args.upper_bound_flag:
             args.other_split_size = num_classes
@@ -91,14 +91,14 @@ class Trainer:
             class_order = np.arange(num_classes).tolist()# class 순서대로 넘버 적혀있음.
             class_order_logits = np.arange(num_classes).tolist()
         
-        if self.seed > 0 and args.rand_split:
-            print('=============================================')
-            print('Shuffling....')
-            print('pre-shuffle:' + str(class_order))
-            random.seed(self.seed)
-            random.shuffle(class_order)
-            print('post-shuffle:' + str(class_order))
-            print('=============================================')
+        # if self.seed > 0 and args.rand_split:
+        #     print('=============================================')
+        #     print('Shuffling....')
+        #     print('pre-shuffle:' + str(class_order))
+        #     random.seed(self.seed)
+        #     random.shuffle(class_order)
+        #     print('post-shuffle:' + str(class_order))
+        #     print('=============================================')
         self.tasks = []#! 클래스 number 들어감. 이중리스트
         self.tasks_logits = []
         
@@ -143,11 +143,11 @@ class Trainer:
                                     seed=self.seed, rand_split=args.rand_split, validation=args.validation)
         else:
             # train_transform = dataloaders.utils.get_transform(dataset=args.dataset, phase='train', aug=args.train_aug, resize_imnet=resize_imnet)
-            anno_path = f'./anno_list/{args.dataset}/train.csv'
+            anno_path = f'./anno_list/{args.dataset}/0.3_train.csv'
             self.train_dataset = Dataset(args.dataroot, train=True, lab = True, tasks=self.tasks,
                                 download_flag=True, 
                                 seed=self.seed, rand_split=args.rand_split, validation=args.validation,args = args,anno_path=anno_path)
-            anno_path = f'./anno_list/{args.dataset}/test.csv'
+            anno_path = f'./anno_list/{args.dataset}/0.3_test.csv'
             self.test_dataset  = Dataset(args.dataroot, train=False, tasks=self.tasks,
                                     download_flag=False,  
                                     seed=self.seed, rand_split=args.rand_split, validation=args.validation, args = args, anno_path=anno_path)
@@ -179,7 +179,8 @@ class Trainer:
                         'upper_bound_flag': args.upper_bound_flag,
                         'tasks': self.tasks_logits,
                         'top_k': self.top_k,
-                        'prompt_param':[self.num_tasks,args.prompt_param]
+                        'prompt_param':[self.num_tasks,args.prompt_param],
+                        'frame_prompt':args.frame_prompt
                         }
         self.learner_type, self.learner_name = args.learner_type, args.learner_name
         self.learner = learners.__dict__[self.learner_type].__dict__[self.learner_name](self.learner_config)
@@ -254,7 +255,7 @@ class Trainer:
             test_loader  = DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False, drop_last=False, num_workers=self.workers)
             model_save_dir = self.model_top_dir + '/models/repeat-'+str(self.seed+1)+'/task-'+self.task_names[i]+'/'
             if not os.path.exists(model_save_dir): os.makedirs(model_save_dir)
-            avg_train_time = self.learner.learn_batch(train_loader, self.train_dataset, model_save_dir, test_loader)
+            avg_train_time = self.learner.learn_batch(train_loader, self.train_dataset, model_save_dir, test_loader, i)
 
             # save model
             self.learner.save_model(model_save_dir)
@@ -301,7 +302,13 @@ class Trainer:
 
         # repack dictionary and return
         return {'global': avg_acc_all,'pt': avg_acc_pt,'pt-local': avg_acc_pt_local}
-
+    def get_len_video(self):
+        len_videos = []
+        for i in range(self.max_task):
+            self.test_dataset.load_dataset(i, train=True)
+            len_videos.append(len(self.test_dataset))
+        return len_videos
+    
     def evaluate(self, avg_metrics):
 
         self.learner = learners.__dict__[self.learner_type].__dict__[self.learner_name](self.learner_config)
@@ -312,7 +319,8 @@ class Trainer:
         for mkey in self.metric_keys:
             metric_table[mkey] = {}
             metric_table_local[mkey] = {}
-            
+             
+        acc_list = [[0 for i in range(self.max_task)] for j in range(self.max_task)]
         for i in range(self.max_task):
 
             # increment task id in prompting modules
@@ -341,14 +349,42 @@ class Trainer:
             metric_table['acc'][self.task_names[i]] = OrderedDict()
             metric_table_local['acc'][self.task_names[i]] = OrderedDict()
             self.reset_cluster_labels = True
+       
             for j in range(i+1):
                 val_name = self.task_names[j]
-                metric_table['acc'][val_name][self.task_names[i]] = self.task_eval(j)
+                metric_table['acc'][val_name][self.task_names[i]]= self.task_eval(j)
+                acc_list[i][j]=metric_table['acc'][val_name][self.task_names[i]]
+                
             for j in range(i+1):
                 val_name = self.task_names[j]
-                metric_table_local['acc'][val_name][self.task_names[i]] = self.task_eval(j, local=True)
+                metric_table_local['acc'][val_name][self.task_names[i]] = 0#self.task_eval(j, local=True)
 
+
+        # for task in range(self.max_task):
+        #     accs = 
+        #     for i,v in metric_table['acc'][:][task]:
+        #         accs[i]=v
+        #     acc_list.append(accs)
+        if self.dataset=='SSV2':
+            len_videos = self.get_len_video()
+            print_matrix_with_aligned_averages(acc_list,len_videos)
         # summarize metrics
         avg_metrics['acc'] = self.summarize_acc(avg_metrics['acc'], metric_table['acc'],  metric_table_local['acc'])
 
         return avg_metrics
+def calculate_weighted_averages(matrix, n_videos):
+    row_averages = [np.average(row[:i+1], weights =n_videos[:i+1]) if len(row) > 0 else 0 for i, row in enumerate(matrix)]
+    overall_average = np.mean(row_averages)
+    return row_averages, overall_average
+def print_matrix_with_aligned_averages(matrix, n_videos):
+    row_averages, overall_average = calculate_weighted_averages(matrix, n_videos)
+    
+    max_row_length = max(len(row) for row in matrix)
+    row_format = "{" + f":<{max_row_length * 3}" + "}"
+    
+    for i, row in enumerate(matrix):
+        row_str = ", ".join(f"{num:.2f}" for num in row)  
+        formatted_row = row_format.format(row_str)  
+        print(f"[{formatted_row}] | Weighted Average: {row_averages[i]:.2f}")
+    
+    print(" " * (max_row_length * 3 + 2) + f"Overall Weighted Average: {overall_average:.2f}") 

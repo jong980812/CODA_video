@@ -12,14 +12,14 @@
             "console": "integratedTerminal",
             "args": [
                 "--config","configs/ucf-101_prompt.yaml",
-                "--gpuid","0", //"1","2","3","4","5","6","7",
+                "--gpuid","0","1","2","3","4","5","6","7",
                 "--repeat","1",
                 "--overwrite","0",
                 "--learner_type","prompt",
                 "--learner_name","CODA_video",
                 "--prompt_param","100","8","0.0",
                 "--log_dir","/data/jong980812/project/cil/CODA-Prompt/debug/",
-                "--anno_path","/data/jong980812/project/cil/CODA-Prompt/UCF101_data_20.pkl"
+                "--anno_path","/data/jong980812/project/cil/CODA-Prompt/anno_list/UCF101/20.pkl"
             ]
         },
         {
@@ -30,14 +30,14 @@
             "console": "integratedTerminal",
             "args": [
                 "--config","/data/jong980812/project/cil/CODA-Prompt/configs/ssv2_prompt.yaml",
-                "--gpuid","0","1","2","3","4","5","6","7",
+                "--gpuid","0","1","2","3",//,"4","5","6","7",
                 "--repeat","1",
-                "--overwrite","0",
+                "--overwrite","1",
                 "--learner_type","prompt",
                 "--learner_name","CODA_video",
-                "--prompt_param","100","8","0.0",
-                "--log_dir","/data/jong980812/project/cil/CODA-Prompt/debug/",
-                "--anno_path","/data/jong980812/project/cil/CODA-Prompt/anno_list/SSV2/ssv2_data_tasks_109_2.pkl"
+                "--prompt_param","200","8","0.0",
+                "--log_dir","/data/jong980812/project/cil/CODA-Prompt/result/mini-ssv2/144_10task_coda_0.3ssv2",
+                "--anno_path","/data/jong980812/project/cil/CODA-Prompt/anno_list/SSV2/ssv2_data_tasks_109_2_0.1.pkl"
             ]
         },
         {

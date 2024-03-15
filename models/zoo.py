@@ -747,13 +747,14 @@ def ortho_penalty(t):
 # note - ortho init has not been found to help l2p/dual prompt
 
 class ViTZoo(nn.Module):
-    def __init__(self, num_classes=10, pt=False, prompt_flag=False, prompt_param=None):
+    def __init__(self, num_classes=10, pt=False, prompt_flag=False, prompt_param=None,frame_prompt = False):
         super(ViTZoo, self).__init__()
 
         # get last layer
         self.last = nn.Linear(512, num_classes)
         self.prompt_flag = prompt_flag
         self.task_id = None
+        self.frame_prompt = frame_prompt
         #!
         #!
         # get feature encoder
@@ -761,7 +762,7 @@ class ViTZoo(nn.Module):
             if 'video' in self.prompt_flag:
                 zoo_model =VisionTransformer_video(img_size=224, patch_size=16, embed_dim=768, depth=12,
                                         num_heads=12, ckpt_layer=0,
-                                        drop_path_rate=0
+                                        drop_path_rate=0, frame_prompt=self.frame_prompt
                                         )
             elif 'adapter' in self.prompt_flag:
                 zoo_model = VisionTransformer_adapter(img_size=224, patch_size=16, embed_dim=768, depth=12,
@@ -807,9 +808,13 @@ class ViTZoo(nn.Module):
 
         if self.prompt is not None:
             with torch.no_grad():
-                q, _ = self.feat(x)
-                q = q[:,0,:]
-            out, prompt_loss = self.feat(x, prompt=self.prompt, q=q, train=train, task_id=self.task_id)
+                if self.frame_prompt:
+                    q, _ = self.feat(x,mean=False)
+                    q = q[:,:,0,:]
+                else:
+                    q,_=self.feat(x,mean=True)
+                    q = q[:,0,:]
+            out, prompt_loss = self.feat(x, prompt=self.prompt, q=q, train=train, task_id=self.task_id,mean=True)
             out = out[:,0,:]
         else:
             out, _ = self.feat(x)
@@ -822,6 +827,6 @@ class ViTZoo(nn.Module):
         else:
             return out
             
-def vit_pt_imnet(out_dim, block_division = None, prompt_flag = 'None', prompt_param=None):
-    return ViTZoo(num_classes=out_dim, pt=True, prompt_flag=prompt_flag, prompt_param=prompt_param)
+def vit_pt_imnet(out_dim, block_division = None, prompt_flag = 'None', prompt_param=None,frame_prompt=False):
+    return ViTZoo(num_classes=out_dim, pt=True, prompt_flag=prompt_flag, prompt_param=prompt_param,frame_prompt=frame_prompt)
 

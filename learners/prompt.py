@@ -140,7 +140,8 @@ class L2P_video(Prompt):
 
     def create_model(self):
         cfg = self.config
-        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'l2p_video',prompt_param=self.prompt_param)
+        frame_prompt = cfg['frame_prompt']
+        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'l2p_video',prompt_param=self.prompt_param,frame_prompt=frame_prompt)
         return model
 
 class CODA_video(Prompt):
@@ -150,7 +151,8 @@ class CODA_video(Prompt):
 
     def create_model(self):
         cfg = self.config
-        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'coda_video',prompt_param=self.prompt_param)
+        frame_prompt = cfg['frame_prompt']
+        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'coda_video',prompt_param=self.prompt_param,frame_prompt=frame_prompt)
         return model
 class CODA_adapter(Prompt):
 

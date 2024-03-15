@@ -11,7 +11,7 @@ import yaml
 import json
 import random
 from trainer import Trainer
-
+import time
 def create_args():
     
     # This function prepares the variables shared across demo.py
@@ -145,13 +145,15 @@ if __name__ == '__main__':
                 if (not (mkey in global_only)):
                     avg_metrics[mkey]['pt'] = np.zeros((max_task,max_task,args.repeat))
                     avg_metrics[mkey]['pt-local'] = np.zeros((max_task,max_task,args.repeat))
-
+        start_time = time.time()
         # train model
-        avg_metrics = trainer.train(avg_metrics)  
-
+        # avg_metrics = trainer.train(avg_metrics)  
         # evaluate model
         avg_metrics = trainer.evaluate(avg_metrics)    
+        end_time = time.time()
+        elapsed_time = end_time - start_time
 
+        print(f"Training took {elapsed_time} seconds.")
         # save results
         for mkey in metric_keys: 
             m_dir = args.log_dir+'/results-'+mkey+'/'

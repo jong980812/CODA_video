@@ -1,10 +1,10 @@
 dataset: UCF101
 first_split_size: 6
-other_split_size: 5
+other_split_size: 5s
 schedule:
 - 30
 schedule_type: cosine
-batch_size: 144
+batch_size: 108
 optimizer: Adam
 lr: 0.003
 momentum: 0.9
@@ -17,3 +17,4 @@ workers: 8
 validation: False
 train_aug: True
 rand_split: True
+frame_prompt: False
