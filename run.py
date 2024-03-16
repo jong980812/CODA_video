@@ -147,7 +147,7 @@ if __name__ == '__main__':
                     avg_metrics[mkey]['pt-local'] = np.zeros((max_task,max_task,args.repeat))
         start_time = time.time()
         # train model
-        # avg_metrics = trainer.train(avg_metrics)  
+        avg_metrics = trainer.train(avg_metrics)  
         # evaluate model
         avg_metrics = trainer.evaluate(avg_metrics)    
         end_time = time.time()
