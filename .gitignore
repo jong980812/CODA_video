@@ -131,3 +131,4 @@ result/
 debug/
 *.out
 *.err
+job.sh
