@@ -378,9 +378,9 @@ class Trainer:
         #     for i,v in metric_table['acc'][:][task]:
         #         accs[i]=v
         #     acc_list.append(accs)
-        if self.dataset=='SSV2':
-            len_videos = self.get_len_video()
-            print_matrix_with_aligned_averages(acc_list,len_videos)
+        # if self.dataset=='SSV2':
+        len_videos = self.get_len_video()
+        print_matrix_with_aligned_averages(acc_list,len_videos)
         # summarize metrics
         avg_metrics['acc'] = self.summarize_acc(avg_metrics['acc'], metric_table['acc'],  metric_table_local['acc'])
 
