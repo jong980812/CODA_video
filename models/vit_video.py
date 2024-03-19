@@ -111,20 +111,8 @@ class Block(nn.Module):
 
     def forward(self, x, register_hook=False, prompt=None):
         BT,N,D = x.shape
-        if prompt is not None:
-            x = x + self.drop_path(self.attn(self.norm1(x), register_hook=register_hook, prompt=prompt))
-            xt = rearrange(x, '(b t) n d -> (b n) t d', t=8)
-            xt = self.drop_path(self.attn(self.norm1(xt)))
-            xt = rearrange(xt, '(b n) t d -> (b t) n d', n = N)
-            x = x + xt
-            x = x + self.drop_path(self.mlp(self.norm2(x)))
-        else:
-            x = x + self.drop_path(self.attn(self.norm1(x), register_hook=register_hook, prompt=prompt))
-            # xt = rearrange(x, '(b t) n d -> t (b n) d', t=8)
-            # xt = self.drop_path(self.attn(self.norm1(xt)))
-            # xt = rearrange(x, 't (b n) d -> (b t) n d', n = N)
-            # x = x + xt
-            x = x + self.drop_path(self.mlp(self.norm2(x)))
+        x = x + self.drop_path(self.attn(self.norm1(x), register_hook=register_hook, prompt=prompt))
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
 
     

@@ -1,12 +1,12 @@
 dataset: UCF101
-first_split_size: 11
-other_split_size: 10
+first_split_size: 6
+other_split_size: 5
 schedule:
-- 50
+- 30
 schedule_type: cosine
-batch_size: 96
+batch_size: 48
 optimizer: Adam
-lr: 0.0005
+lr: 0.001
 momentum: 0.9
 weight_decay: 0
 model_type: zoo
