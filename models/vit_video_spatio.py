@@ -111,24 +111,12 @@ class Block(nn.Module):
 
     def forward(self, x, register_hook=False, prompt=None):
         BT,N,D = x.shape
-        if prompt is not None:
-            x = x + self.drop_path(self.attn(self.norm1(x), register_hook=register_hook, prompt=prompt))
-            xt = rearrange(x, '(b t) n d -> (b n) t d', t=8)
-            xt = self.drop_path(self.attn(self.norm1(xt)))
-            xt = rearrange(xt, '(b n) t d -> (b t) n d', n = N)
-            x = x + xt
-            x = x + self.drop_path(self.mlp(self.norm2(x)))
-        else:
-            x = x + self.drop_path(self.attn(self.norm1(x), register_hook=register_hook, prompt=prompt))
-            # xt = rearrange(x, '(b t) n d -> t (b n) d', t=8)
-            # xt = self.drop_path(self.attn(self.norm1(xt)))
-            # xt = rearrange(x, 't (b n) d -> (b t) n d', n = N)
-            # x = x + xt
-            x = x + self.drop_path(self.mlp(self.norm2(x)))
+        x = x + self.drop_path(self.attn(self.norm1(x), register_hook=register_hook, prompt=prompt))
+        x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
 
     
-class VisionTransformer_video(nn.Module):
+class VisionTransformer_spatio(nn.Module):
     """ Vision Transformer
     A PyTorch impl of : `An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale`  -
         https://arxiv.org/abs/2010.11929
@@ -208,38 +196,36 @@ class VisionTransformer_video(nn.Module):
 
         prompt_loss = torch.zeros((1,), requires_grad=True).cuda()
         for i,blk in enumerate(self.blocks):
-            p_list_1 = []
-            p_list_2 = []
             if prompt is not None:
-                if self.frame_prompt:
-                    if train:
-                        B,T,D = q.shape
-                        for j in range(T):
-                            p, loss, x = prompt.forward(q[:,j,:], i, x, train=True, task_id=task_id)# q( B,T,D)
-                            prompt_loss += loss
-                            if p is not None:
-                                p_list_1.append(p[0])
-                                p_list_2.append(p[1])
+                c_q,s_q,t_q = q['c'],q['s'],q['t']
+                c_prompt,s_prompt,t_prompt = prompt['c'],prompt['s'],prompt['t']
+                if train:
+                    c_p, loss, x = c_prompt.forward(c_q, i, x, train=True, task_id=task_id)# q( B,T,D)
+                    t_p, loss, x = t_prompt.forward(t_q, i, x, train=True, task_id=task_id)# q( B,T,D)
+                    # s_p, loss, x = s_prompt.forward(s_q, i, x, train=True, task_id=task_id)# q( B,T,D)
+                    if c_p is not None:
+                        p_list = [c_p[0]+t_p[0],c_p[1]+t_p[1]]
                     else:
-                        # p_list, _, x = prompt.forward(q, i, x, train=False, task_id=task_id)
-                        B,T,D = q.shape
-                        for j in range(T):
-                            p, _, x = prompt.forward(q[:,j,:], i, x, train=True, task_id=task_id)# q( B,T,D)
-                            if p is not None:
-                                p_list_1.append(p[0])
-                                p_list_2.append(p[1])
+                        p_list = None
+                    prompt_loss += loss
 
-                    if len(p_list_1) > 0:
-                        p_list_1 = torch.stack(p_list_1,dim=1)
-                        p_list_2 = torch.stack(p_list_2,dim=1)
-                        p_list = [p_list_1,p_list_2]
-            #*#######################################################
                 else:
-                    if train:
-                        p_list, loss, x = prompt.forward(q, i, x, train=True, task_id=task_id)
-                        prompt_loss += loss
+                    # p_list, _, x = prompt.forward(q, i, x, train=False, task_id=task_id)
+                    c_p, _, x = c_prompt.forward(c_q, i, x, train=False, task_id=task_id)# q( B,T,D)
+                    t_p, _, x = t_prompt.forward(t_q, i, x, train=False, task_id=task_id)# q( B,T,D)
+                    # s_p, _, x = s_prompt.forward(s_q, i, x, train=False, task_id=task_id)# q( B,T,D)
+                    if c_p is not None:
+                        p_list = [c_p[0]+t_p[0],c_p[1]+t_p[1]]
                     else:
-                        p_list, _, x = prompt.forward(q, i, x, train=False, task_id=task_id)
+                        p_list = None
+
+            #*#######################################################
+                # else:
+                #     if train:
+                #         p_list, loss, x = prompt.forward(q, i, x, train=True, task_id=task_id)
+                #         prompt_loss += loss
+                #     else:
+                #         p_list, _, x = prompt.forward(q, i, x, train=False, task_id=task_id)
             else:
                 p_list = None
             x = blk(x, register_blk==i, prompt=p_list)
@@ -257,7 +243,7 @@ class VisionTransformer_video(nn.Module):
         
 
 @torch.no_grad()
-def _load_weights(model: VisionTransformer_video, checkpoint_path: str, prefix: str = ''):
+def _load_weights(model: VisionTransformer_spatio, checkpoint_path: str, prefix: str = ''):
     """ Load weights from .npz checkpoints for official Google Brain Flax implementation
     """
     import numpy as np

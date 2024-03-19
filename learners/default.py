@@ -92,7 +92,7 @@ class NormalNN(nn.Module):
             acc = AverageMeter()
             batch_time = AverageMeter()
             batch_timer = Timer()
-            for epoch in range(self.config['schedule'][-1] if task_id!=0 else self.config['schedule'][-1]//3):
+            for epoch in range(self.config['schedule'][-1]):# if task_id!=0 else self.config['schedule'][-1]//3):
                 self.epoch=epoch
 
                 if epoch > 0: self.scheduler.step()
@@ -245,12 +245,12 @@ class NormalNN(nn.Module):
         self.model.load_state_dict(torch.load(filename + 'class.pth'))
         self.log('=> Load Done')
 
-        normalized_weights=self.model.module.last.weight.clone()
+        # normalized_weights=self.model.module.last.weight.clone()
         # 정규화된 가중치 계산 후 파라미터 업데이트
-        normalized_weights[:84] = normalized_weights[:84] /2. 
+        # normalized_weights[:84] = normalized_weights[:84] /2. 
 
         # 수정된 가중치를 torch.nn.Parameter로 변환하여 모델에 할당
-        self.model.module.last.weight = torch.nn.Parameter(normalized_weights)
+        # self.model.module.last.weight = torch.nn.Parameter(normalized_weights)
 
         # 정규화된 가중치 계산
         if self.gpu:

@@ -133,7 +133,7 @@ class Block(nn.Module):
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
-        self.S_Adapter = Adapter(D_features=dim,skip_connect=True)
+        self.S_Adapter = Adapter(D_features=dim,skip_connect=False)
     def forward(self, x, register_hook=False, prompt=None):
         ln1 = self.norm1(x)
         adapter_x = self.S_Adapter(ln1,prompt)
@@ -208,7 +208,7 @@ class VisionTransformer_adapter(nn.Module):
     def no_weight_decay(self):
         return {'pos_embed', 'cls_token'}
 
-    def forward(self, x, register_blk=-1, prompt=None, q=None, train=False, task_id=None):
+    def forward(self, x, register_blk=-1, prompt=None, q=None, train=False, task_id=None,mean=True):
         B = x.shape[0]
         B, C, T, H, W = x.shape #!  EX) Batch size(10), Channel(3), Frames(8), Height(224), Width(224)
         x = rearrange(x, 'b c t h w -> (b t) c h w')
@@ -244,7 +244,9 @@ class VisionTransformer_adapter(nn.Module):
 
         x = self.norm(x)
         x = rearrange(x, '(b t) n d -> b t n d',b=B,t=T)
-        x = x.mean(1)
+        # x = x.mean(1)
+        x = x.mean(1) if mean else x
+        
         
         return x, prompt_loss
 

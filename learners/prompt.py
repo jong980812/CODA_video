@@ -46,34 +46,76 @@ class Prompt(NormalNN):
     # sets model optimizers
     def init_optimizer(self):
 
-        # parse optimizer args
-        # Multi-GPU
-        if len(self.config['gpuid']) > 1:
-            params_to_opt = list(self.model.module.prompt.parameters()) + list(self.model.module.last.parameters())
-        else:
-            params_to_opt = list(self.model.prompt.parameters()) + list(self.model.last.parameters())
-        print('*****************************************')
-        optimizer_arg = {'params':params_to_opt,
-                         'lr':self.config['lr'],
-                         'weight_decay':self.config['weight_decay']}
-        if self.config['optimizer'] in ['SGD','RMSprop']:
-            optimizer_arg['momentum'] = self.config['momentum']
-        elif self.config['optimizer'] in ['Rprop']:
-            optimizer_arg.pop('weight_decay')
-        elif self.config['optimizer'] == 'amsgrad':
-            optimizer_arg['amsgrad'] = True
-            self.config['optimizer'] = 'Adam'
-        elif self.config['optimizer'] == 'Adam':
-            optimizer_arg['betas'] = (self.config['momentum'],0.999)
+        # # parse optimizer args
+        # # Multi-GPU
+        # if len(self.config['gpuid']) > 1:
+        #     params_to_opt = list(self.model.module.prompt.parameters()) + list(self.model.module.last.parameters())
+        # else:
+        #     params_to_opt = list(self.model.prompt.parameters()) + list(self.model.last.parameters())
+        # print('*****************************************')
+        # optimizer_arg = {'params':params_to_opt,
+        #                  'lr':self.config['lr'],
+        #                  'weight_decay':self.config['weight_decay']}
+        # if self.config['optimizer'] in ['SGD','RMSprop']:
+        #     optimizer_arg['momentum'] = self.config['momentum']
+        # elif self.config['optimizer'] in ['Rprop']:
+        #     optimizer_arg.pop('weight_decay')
+        # elif self.config['optimizer'] == 'amsgrad':
+        #     optimizer_arg['amsgrad'] = True
+        #     self.config['optimizer'] = 'Adam'
+        # elif self.config['optimizer'] == 'Adam':
+        #     optimizer_arg['betas'] = (self.config['momentum'],0.999)
 
-        # create optimizers
-        self.optimizer = torch.optim.__dict__[self.config['optimizer']](**optimizer_arg)
+        # # create optimizers
+        # self.optimizer = torch.optim.__dict__[self.config['optimizer']](**optimizer_arg)
         
-        # create schedules
+        # # create schedules
+        # if self.schedule_type == 'cosine':
+        #     self.scheduler = CosineSchedule(self.optimizer, K=self.schedule[-1])
+        # elif self.schedule_type == 'decay':
+        #     self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.schedule, gamma=0.1)
+    # Multi-GPU
+        if len(self.config['gpuid']) > 1:
+            prompt_params = list(self.model.module.prompt.parameters())+list(self.model.module.last.parameters())
+            # last_params = list(self.model.module.last.parameters())
+        else:
+            prompt_params = list(self.model.prompt.parameters())+list(self.model.last.parameters())
+            # last_params = list(self.model.last.parameters())
+
+        # 기본 파라미터 그룹 설정 (last 제외)
+        optimizer_arg = [{'params': prompt_params,
+                        'lr': self.config['lr'],
+                        'weight_decay': self.config['weight_decay']}]
+
+        # # last 파라미터 그룹에 대한 설정 (학습률 100배 증가)
+        # optimizer_arg.append({'params': last_params, 
+        #                     'lr': self.config['lr'], 
+        #                     'weight_decay': self.config['weight_decay']})
+
+        # 옵티마이저별 추가 설정
+        if self.config['optimizer'] in ['SGD', 'RMSprop']:
+            for arg in optimizer_arg:
+                arg['momentum'] = self.config['momentum']
+        elif self.config['optimizer'] in ['Rprop']:
+            for arg in optimizer_arg:
+                arg.pop('weight_decay', None)  # weight_decay 제거
+        elif self.config['optimizer'] == 'amsgrad':
+            self.config['optimizer'] = 'Adam'
+            for arg in optimizer_arg:
+                arg['amsgrad'] = True
+        elif self.config['optimizer'] == 'Adam':
+            for arg in optimizer_arg:
+                arg['betas'] = (self.config['momentum'], 0.999)
+
+        # 옵티마이저 생성
+        self.optimizer = torch.optim.__dict__[self.config['optimizer']](optimizer_arg)
+
+        # 스케줄러 생성
         if self.schedule_type == 'cosine':
             self.scheduler = CosineSchedule(self.optimizer, K=self.schedule[-1])
         elif self.schedule_type == 'decay':
             self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.schedule, gamma=0.1)
+
 
     def create_model(self):
         pass
@@ -141,9 +183,19 @@ class L2P_video(Prompt):
     def create_model(self):
         cfg = self.config
         frame_prompt = cfg['frame_prompt']
-        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'l2p_video',prompt_param=self.prompt_param,frame_prompt=frame_prompt)
+        clip = cfg['clip']
+        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'l2p_video',prompt_param=self.prompt_param,frame_prompt=frame_prompt,clip=clip)
         return model
+class L2P_spatio(Prompt):
 
+    def __init__(self, learner_config):
+        super(L2P_spatio, self).__init__(learner_config)
+
+    def create_model(self):
+        cfg = self.config
+        frame_prompt = cfg['frame_prompt']
+        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'l2p_spatio',prompt_param=self.prompt_param,frame_prompt=frame_prompt)
+        return model
 class CODA_video(Prompt):
 
     def __init__(self, learner_config):
@@ -151,8 +203,9 @@ class CODA_video(Prompt):
 
     def create_model(self):
         cfg = self.config
+        clip = cfg['clip']
         frame_prompt = cfg['frame_prompt']
-        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'coda_video',prompt_param=self.prompt_param,frame_prompt=frame_prompt)
+        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'coda_video',prompt_param=self.prompt_param,frame_prompt=frame_prompt,clip=clip)
         return model
 class CODA_adapter(Prompt):
 

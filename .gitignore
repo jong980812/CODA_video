@@ -132,3 +132,5 @@ debug/
 *.out
 *.err
 job.sh
+
+.vscode

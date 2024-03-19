@@ -4,17 +4,16 @@ other_split_size: 10
 schedule:
 - 30
 schedule_type: cosine
-batch_size: 40
+batch_size: 96
 optimizer: Adam
 lr: 0.003
 momentum: 0.9
 weight_decay: 0
 model_type: zoo
-model_name: vit_pt_imnet
+model_name: vit_pt_imnet_spatio
 max_task: -1
-dataroot: /local_datasets/something-something/something-something-v2-mp4
+dataroot: /local_datasets/something-something-v2/videos
 workers: 10
 validation: False
 train_aug: True
 rand_split: True
-frame_prompt: True
