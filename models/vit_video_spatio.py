@@ -200,22 +200,25 @@ class VisionTransformer_spatio(nn.Module):
                 c_q,s_q,t_q = q['c'],q['s'],q['t']
                 c_prompt,s_prompt,t_prompt = prompt['c'],prompt['s'],prompt['t']
                 if train:
-                    c_p, loss, x = c_prompt.forward(c_q, i, x, train=True, task_id=task_id)# q( B,T,D)
-                    t_p, loss, x = t_prompt.forward(t_q, i, x, train=True, task_id=task_id)# q( B,T,D)
+                    # c_p, loss1, x = c_prompt.forward(c_q, i, x, train=True, task_id=task_id)# q( B,T,D)
+                    t_p, loss2, x = t_prompt.forward(t_q, i, x, train=True, task_id=task_id)# q( B,T,D)
+                    loss = loss2
                     # s_p, loss, x = s_prompt.forward(s_q, i, x, train=True, task_id=task_id)# q( B,T,D)
-                    if c_p is not None:
-                        p_list = [c_p[0]+t_p[0],c_p[1]+t_p[1]]
+                    if t_p is not None:
+                        # p_list = [torch.cat([t_p[0],c_p[0]]),torch.cat([t_p[1],c_p[1]])]
+                        p_list = [t_p[0],t_p[1]]
                     else:
                         p_list = None
                     prompt_loss += loss
 
                 else:
                     # p_list, _, x = prompt.forward(q, i, x, train=False, task_id=task_id)
-                    c_p, _, x = c_prompt.forward(c_q, i, x, train=False, task_id=task_id)# q( B,T,D)
-                    t_p, _, x = t_prompt.forward(t_q, i, x, train=False, task_id=task_id)# q( B,T,D)
+                    # c_p, _, x = c_prompt.forward(c_q, i, x, train=False, task_id=task_id)# q( B,T,D)
+                    t_p, _, x = t_prompt.forward(t_q, i, x, train=False, task_id=task_id)# q( B,N,D)
                     # s_p, _, x = s_prompt.forward(s_q, i, x, train=False, task_id=task_id)# q( B,T,D)
-                    if c_p is not None:
-                        p_list = [c_p[0]+t_p[0],c_p[1]+t_p[1]]
+                    if t_p is not None:
+                        p_list = [t_p[0],t_p[1]]
+                        # p_list = [torch.cat([t_p[0],c_p[0]]),torch.cat([t_p[1],c_p[1]])]  
                     else:
                         p_list = None
 

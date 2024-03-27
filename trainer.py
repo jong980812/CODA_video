@@ -143,13 +143,12 @@ class Trainer:
                                     seed=self.seed, rand_split=args.rand_split, validation=args.validation)
         else:
             # train_transform = dataloaders.utils.get_transform(dataset=args.dataset, phase='train', aug=args.train_aug, resize_imnet=resize_imnet)
-            # anno_path = f'./anno_list/{args.dataset}/0.3_train.csv'
-            anno_path = f'./anno_list/{args.dataset}/train.csv'
+            anno_path = f'./anno_list/{args.dataset}/0.1_train.csv' if args.dataset=='SSV2' else f'./anno_list/{args.dataset}/train.csv'
             self.train_dataset = Dataset(args.dataroot, train=True, lab = True, tasks=self.tasks,
                                 download_flag=True, 
                                 seed=self.seed, rand_split=args.rand_split, validation=args.validation,args = args,anno_path=anno_path)
-            # anno_path = f'./anno_list/{args.dataset}/0.3_test.csv'
-            anno_path = f'./anno_list/{args.dataset}/test.csv'
+            anno_path = f'./anno_list/{args.dataset}/0.1_test.csv' if args.dataset=='SSV2' else f'./anno_list/{args.dataset}/test.csv'
+    
             self.test_dataset  = Dataset(args.dataroot, train=False, tasks=self.tasks,
                                     download_flag=False,  
                                     seed=self.seed, rand_split=args.rand_split, validation=args.validation, args = args, anno_path=anno_path)
@@ -249,9 +248,13 @@ class Trainer:
                 try:
                     if self.learner.model.module.prompt is not None:
                         if isinstance(self.learner.model.module.prompt,torch.nn.ModuleDict):
-                            self.learner.model.module.prompt['c'].process_task_count()
-                            self.learner.model.module.prompt['t'].process_task_count()
-                            self.learner.model.module.prompt['s'].process_task_count()
+                            if self.learner_name=='L2P_spatio':
+                                self.learner.model.module.prompt['c'].process_task_count()
+                                self.learner.model.module.prompt['t'].process_task_count()
+                                self.learner.model.module.prompt['s'].process_task_count()
+                            else:
+                                self.learner.model.module.prompt['up'].process_task_count()
+                                self.learner.model.module.prompt['down'].process_task_count() 
                         else:
                             self.learner.model.module.prompt.process_task_count()
                 except:
@@ -332,13 +335,29 @@ class Trainer:
         for i in range(self.max_task):
 
             # increment task id in prompting modules
+            # if i > 0:
+            #     try:
+            #         if self.learner.model.module.prompt is not None:
+            #             if isinstance(self.learner.model.module.prompt,torch.nn.ModuleDict):
+            #                 self.learner.model.module.prompt['c'].process_task_count()
+            #                 self.learner.model.module.prompt['t'].process_task_count()
+            #                 self.learner.model.module.prompt['s'].process_task_count()
+            #             else:
+            #                 self.learner.model.module.prompt.process_task_count()
+            #     except:
+            #         if self.learner.model.prompt is not None:
+            #             self.learner.model.prompt.process_task_count()
             if i > 0:
                 try:
                     if self.learner.model.module.prompt is not None:
                         if isinstance(self.learner.model.module.prompt,torch.nn.ModuleDict):
-                            self.learner.model.module.prompt['c'].process_task_count()
-                            self.learner.model.module.prompt['t'].process_task_count()
-                            self.learner.model.module.prompt['s'].process_task_count()
+                            if self.learner_name=='L2P_spatio':
+                                self.learner.model.module.prompt['c'].process_task_count()
+                                self.learner.model.module.prompt['t'].process_task_count()
+                                self.learner.model.module.prompt['s'].process_task_count()
+                            else:
+                                self.learner.model.module.prompt['up'].process_task_count()
+                                self.learner.model.module.prompt['down'].process_task_count() 
                         else:
                             self.learner.model.module.prompt.process_task_count()
                 except:

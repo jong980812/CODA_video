@@ -8,8 +8,10 @@ from .vit import VisionTransformer
 from .vit_video import VisionTransformer_video
 from .vit_adapter import VisionTransformer_adapter
 from .vit_video_spatio import VisionTransformer_spatio
+from .vit_adapter_l2p import VisionTransformer_adapter_l2p
 from .clip_video import CLIP_video
 import numpy as np
+from collections import OrderedDict
 import copy
 
 # Our method!
@@ -224,7 +226,7 @@ class DualPrompt(nn.Module):
         # e prompt init
         for e in self.e_layers:
             p = tensor_prompt(self.e_pool_size, self.e_p_length, emb_d)
-            nn.init.zeros_(p[:,self.e_p_length//2:,:])
+            # nn.init.zeros_(p[:,self.e_p_length//2:,:])
             k = tensor_prompt(self.e_pool_size, self.key_d)
             setattr(self, f'e_p_{e}',p)
             setattr(self, f'e_k_{e}',k)
@@ -338,21 +340,21 @@ class DualPrompt_spatio(nn.Module):
         if self.prompt_type=='c':
             for e in self.e_layers:
                 p = tensor_prompt(self.e_pool_size, self.e_p_length, emb_d)
-                nn.init.zeros_(p[:,self.e_p_length//2:,:])
+                # nn.init.zeros_(p[:,self.e_p_length//2:,:])
                 k = tensor_prompt(self.e_pool_size, self.key_d)
                 setattr(self, f'c_e_p_{e}',p)
                 setattr(self, f'c_e_k_{e}',k)
         elif self.prompt_type=='t':
             for e in self.e_layers:
                 p = tensor_prompt(self.e_pool_size, self.e_p_length, emb_d)
-                nn.init.zeros_(p[:,self.e_p_length//2:,:])
+                # nn.init.zeros_(p[:,self.e_p_length//2:,:])
                 k = tensor_prompt(self.e_pool_size,self.frame_len, self.key_d)
                 setattr(self, f't_e_p_{e}',p)
                 setattr(self, f't_e_k_{e}',k)
         elif self.prompt_type=='s':
             for e in self.e_layers:
                 p = tensor_prompt(self.e_pool_size, self.e_p_length, emb_d)
-                nn.init.zeros_(p[:,self.e_p_length//2:,:])
+                # nn.init.zeros_(p[:,self.e_p_length//2:,:])
                 k = tensor_prompt(self.e_pool_size,self.path_len, self.key_d)
                 setattr(self, f's_e_p_{e}',p)
                 setattr(self, f's_e_k_{e}',k)
@@ -929,7 +931,23 @@ class ViTZoo(nn.Module):
         self.task_id = None
         self.frame_prompt = frame_prompt
         #!
+        from timm.models import create_model
+        from .videomae import vit_base_patch16_224
+        self.vmae = vit_base_patch16_224(
+          pretrained=False,
+          num_classes=1,
+          all_frames=8,
+          tubelet_size=2,
+          drop_rate=0.,
+          drop_path_rate=0.,
+          attn_drop_rate=0.,
+          use_mean_pooling=False,
+          init_scale=0.001,
+
+      )
+        # vmae_load(self.vmae,'/data/jongseo/project/cil/CODA_video/ssv2_1600.pth')
         #!
+        
         # get feature encoder
         if pt:
             if 'video' in self.prompt_flag:
@@ -947,6 +965,11 @@ class ViTZoo(nn.Module):
                 zoo_model = VisionTransformer_adapter(img_size=224, patch_size=16, embed_dim=768, depth=12,
                                         num_heads=12, ckpt_layer=0,
                                         drop_path_rate=0
+                                        )
+                if 'l2p' in self.prompt_flag:
+                    zoo_model = VisionTransformer_adapter_l2p(img_size=224, patch_size=16, embed_dim=768, depth=12,
+                                        num_heads=12, ckpt_layer=0,
+                                        drop_path_rate=0,aim=True
                                         )
             else:
                 zoo_model = VisionTransformer(img_size=224, patch_size=16, embed_dim=768, depth=12,
@@ -976,7 +999,12 @@ class ViTZoo(nn.Module):
         elif self.prompt_flag == 'coda_adapter':
             self.prompt = CodaPrompt_adapter(768, prompt_param[0], prompt_param[1])
         elif self.prompt_flag == 'l2p_adapter':
-            self.prompt = L2P_video(768, prompt_param[0], prompt_param[1])
+            self.up = Adapter(768, prompt_param[0], prompt_param[1],up=True)
+            self.down = Adapter(768, prompt_param[0], prompt_param[1],up = False)
+            self.prompt=nn.ModuleDict({
+                'up':self.up,
+                'down':self.down
+            })
         elif self.prompt_flag == 'l2p_video':
             self.prompt = L2P_video(768, prompt_param[0], prompt_param[1])
         else:
@@ -995,9 +1023,11 @@ class ViTZoo(nn.Module):
                     q = q[:,:,0,:]
                 else:
                     q,_=self.feat(x,mean=True)
+                    # q = self.vmae(x)
                     q = q[:,0,:]
             out, prompt_loss = self.feat(x, prompt=self.prompt, q=q, train=train, task_id=self.task_id,mean=True)
             out = out[:,0,:]
+            # prompt_loss = torch.zeros((1,), requires_grad=False).cuda()
         else:
             out, _ = self.feat(x)
             out = out[:,0,:]
@@ -1073,8 +1103,8 @@ class ViTZoo_spatio(nn.Module):
         if self.prompt is not None:
             with torch.no_grad():
                 q, _ = self.feat(x,mean=False)
-                s_q = q.mean(1)#B,N,D 
-                t_q = q.mean(2)#B,T,D
+                s_q = q.mean(1)#B,T,D 
+                t_q = q.mean(2)#B,N,D
                 c_q = q[:,:,0,:].mean(1)#B,D
                 quries = {'s':s_q,'t':t_q,'c':c_q}
             out, prompt_loss = self.feat(x, prompt=self.prompt, q=quries, train=train, task_id=self.task_id,mean=True)
@@ -1146,3 +1176,270 @@ def transfer_clip_weights_to_vit(target):
     print(f"=> loaded successfully 'CLIP'")
     torch.cuda.empty_cache()
     return target
+
+
+
+
+
+
+
+
+
+        
+class DualPrompt_adapter(nn.Module):
+    def __init__(self, emb_d, n_tasks, prompt_param, key_dim=768,up=False):
+        super().__init__()
+        self.task_count = 0
+        self.emb_d = emb_d
+        self.key_d = key_dim
+        self.n_tasks = n_tasks
+        self._init_smart(emb_d, prompt_param)
+        self.up = up
+        # g prompt init
+        for g in self.g_layers:
+            p = tensor_prompt(self.g_p_length, emb_d)
+            setattr(self, f'g_p_{g}',p)
+
+        # e prompt init
+        for e in self.e_layers:
+            p = tensor_prompt(self.e_pool_size, self.e_p_length, emb_d)
+            nn.init.zeros_(p) if self.up else p
+            k = tensor_prompt(self.e_pool_size, self.key_d)
+            setattr(self, f'e_p_{e}',p)
+            setattr(self, f'e_k_{e}',k)
+
+    def _init_smart(self, emb_d, prompt_param):
+        
+        self.top_k = 1
+        self.task_id_bootstrap = True
+
+        # prompt locations
+        self.g_layers = [0,1]
+        self.e_layers = [2,3,4]
+
+        # prompt pool size
+        self.g_p_length = int(prompt_param[2])
+        self.e_p_length = int(prompt_param[1])
+        self.e_pool_size = int(prompt_param[0])
+
+    def process_task_count(self):
+        self.task_count += 1
+
+    def forward(self, x_querry, l, x_block, train=False, task_id=None):
+
+        # e prompts
+        e_valid = False
+        if l in self.e_layers:
+            e_valid = True
+            B, C = x_querry.shape
+            K = getattr(self,f'e_k_{l}') # 0 based indexing here
+            p = getattr(self,f'e_p_{l}') # 0 based indexing here
+            
+            # cosine similarity to match keys/querries
+            n_K = nn.functional.normalize(K, dim=1)
+            q = nn.functional.normalize(x_querry, dim=1).detach()#.to(n_K.device)
+            cos_sim = torch.einsum('bj,kj->bk', q, n_K)
+            
+            if train:
+                # dual prompt during training uses task id
+                if self.task_id_bootstrap:
+                    loss = (1.0 - cos_sim[:,task_id]).sum()
+                    P_ = p[task_id].expand(len(x_querry),-1,-1)
+                else:
+                    top_k = torch.topk(cos_sim, self.top_k, dim=1)
+                    k_idx = top_k.indices
+                    loss = (1.0 - cos_sim[:,k_idx]).sum()
+                    P_ = p[k_idx]
+            else:
+                top_k = torch.topk(cos_sim, self.top_k, dim=1)
+                k_idx = top_k.indices
+                P_ = p[k_idx]
+                
+            # select prompts
+            if train and self.task_id_bootstrap:
+                i = int(self.e_p_length/2)
+                Ek = P_[:,:i,:].reshape((B,-1,self.emb_d))
+                Ev = P_[:,i:,:].reshape((B,-1,self.emb_d))
+            else:
+                i = int(self.e_p_length/2)
+                Ek = P_[:,:,:i,:].reshape((B,-1,self.emb_d))
+                Ev = P_[:,:,i:,:].reshape((B,-1,self.emb_d))
+        
+        # g prompts
+        g_valid = False
+        if l in self.g_layers:
+            g_valid = True
+            j = int(self.g_p_length/2)
+            p = getattr(self,f'g_p_{l}') # 0 based indexing here
+            P_ = p.expand(len(x_querry),-1,-1)
+            Gk = P_[:,:j,:]
+            Gv = P_[:,j:,:]
+
+        # combine prompts for prefix tuning
+        if e_valid and g_valid:
+            Pk = torch.cat((Ek, Gk), dim=1)
+            Pv = torch.cat((Ev, Gv), dim=1)
+            p_return = [Pk, Pv]
+        elif e_valid:
+            p_return = [Ek, Ev]
+        elif g_valid:
+            p_return = [Gk, Gv]
+            loss = 0
+        else:
+            p_return = None
+            loss = 0
+
+        # return
+        if train:
+            return p_return, loss, x_block
+        else:
+            return p_return, 0, x_block
+
+class Adapter(DualPrompt_adapter):
+    def __init__(self, emb_d, n_tasks, prompt_param, key_dim=768,up=False):
+        super().__init__(emb_d, n_tasks, prompt_param, key_dim,up)
+        self.up = up
+    def _init_smart(self, emb_d, prompt_param):
+        self.top_k = 1
+        self.task_id_bootstrap = False
+
+        # prompt locations
+        self.g_layers = []
+        if prompt_param[2] > 0:
+            self.e_layers = [0,1,2,3,4]
+        else:
+            self.e_layers = [0]
+
+        # prompt pool size
+        self.g_p_length = -1
+        self.e_p_length = int(prompt_param[1])
+        self.e_pool_size = int(prompt_param[0])
+# class Adapter_down(DualPrompt_adapter):
+#     def __init__(self, emb_d, n_tasks, prompt_param, key_dim=768):
+#         super().__init__(emb_d, n_tasks, prompt_param, key_dim)
+
+#     def _init_smart(self, emb_d, prompt_param):
+#         self.top_k = 5
+#         self.task_id_bootstrap = False
+
+#         # prompt locations
+#         self.g_layers = []
+#         if prompt_param[2] > 0:
+#             self.e_layers = [0,1,2,3,4]
+#         else:
+#             self.e_layers = [0]
+
+#         # prompt pool size
+#         self.g_p_length = -1
+#         self.e_p_length = int(prompt_param[1])
+#         self.e_pool_size = int(prompt_param[0])
+#         self.up = False
+def vmae_load(model,finetune):
+    if finetune:
+        if finetune.startswith('https'):
+            checkpoint = torch.hub.load_state_dict_from_url(
+                finetune, map_location='cpu', check_hash=True)
+        else:
+            checkpoint = torch.load(finetune, map_location='cpu')
+
+        print("Load ckpt from %s" % finetune)
+        checkpoint_model = None
+        for model_key in 'model|module'.split('|'):
+            if model_key in checkpoint:
+                checkpoint_model = checkpoint[model_key]
+                print("Load state_dict by model_key = %s" % model_key)
+                break
+        if checkpoint_model is None:
+            checkpoint_model = checkpoint
+        state_dict = model.state_dict()
+        for k in ['head.weight', 'head.bias']:
+            if k in checkpoint_model and checkpoint_model[k].shape != state_dict[k].shape:
+                print(f"Removing key {k} from pretrained checkpoint")
+                del checkpoint_model[k]
+
+        all_keys = list(checkpoint_model.keys())
+        new_dict = OrderedDict()
+        for key in all_keys:
+            if key.startswith('backbone.'):
+                new_dict[key[9:]] = checkpoint_model[key]
+            elif key.startswith('encoder.'):
+                new_dict[key[8:]] = checkpoint_model[key]
+            else:
+                new_dict[key] = checkpoint_model[key]
+        checkpoint_model = new_dict
+
+        # interpolate position embedding
+        if 'pos_embed' in checkpoint_model:
+            pos_embed_checkpoint = checkpoint_model['pos_embed']
+            embedding_size = pos_embed_checkpoint.shape[-1] # channel dim
+            num_patches = model.patch_embed.num_patches # 
+            num_extra_tokens = model.pos_embed.shape[-2] - num_patches # 0/1
+
+            # height (== width) for the checkpoint position embedding 
+            orig_size = int(((pos_embed_checkpoint.shape[-2] - num_extra_tokens)//(8 // model.patch_embed.tubelet_size)) ** 0.5)
+            # height (== width) for the new position embedding
+            new_size = int((num_patches // (8 // model.patch_embed.tubelet_size) )** 0.5)
+            # class_token and dist_token are kept unchanged
+            if orig_size != new_size:
+                print("Position interpolate from %dx%d to %dx%d" % (orig_size, orig_size, new_size, new_size))
+                extra_tokens = pos_embed_checkpoint[:, :num_extra_tokens]
+                # only the position tokens are interpolated
+                pos_tokens = pos_embed_checkpoint[:, num_extra_tokens:]
+                # B, L, C -> BT, H, W, C -> BT, C, H, W
+                pos_tokens = pos_tokens.reshape(-1, 8 // model.patch_embed.tubelet_size, orig_size, orig_size, embedding_size)
+                pos_tokens = pos_tokens.reshape(-1, orig_size, orig_size, embedding_size).permute(0, 3, 1, 2)
+                pos_tokens = torch.nn.functional.interpolate(
+                    pos_tokens, size=(new_size, new_size), mode='bicubic', align_corners=False)
+                # BT, C, H, W -> BT, H, W, C ->  B, T, H, W, C
+                pos_tokens = pos_tokens.permute(0, 2, 3, 1).reshape(-1, 8 // model.patch_embed.tubelet_size, new_size, new_size, embedding_size) 
+                pos_tokens = pos_tokens.flatten(1, 3) # B, L, C
+                new_pos_embed = torch.cat((extra_tokens, pos_tokens), dim=1)
+                checkpoint_model['pos_embed'] = new_pos_embed
+
+        load_state_dict(model, checkpoint_model, prefix='')
+def load_state_dict(model, state_dict, prefix='', ignore_missing="relative_position_index"):
+    missing_keys = []
+    unexpected_keys = []
+    error_msgs = []
+    metadata = getattr(state_dict, '_metadata', None)
+    state_dict = state_dict.copy()
+    if metadata is not None:
+        state_dict._metadata = metadata
+
+    def load(module, prefix=''):
+        local_metadata = {} if metadata is None else metadata.get(
+            prefix[:-1], {})
+        module._load_from_state_dict(
+            state_dict, prefix, local_metadata, True, missing_keys, unexpected_keys, error_msgs)
+        for name, child in module._modules.items():
+            if child is not None:
+                load(child, prefix + name + '.')
+
+    load(model, prefix=prefix)
+
+    warn_missing_keys = []
+    ignore_missing_keys = []
+    for key in missing_keys:
+        keep_flag = True
+        for ignore_key in ignore_missing.split('|'):
+            if ignore_key in key:
+                keep_flag = False
+                break
+        if keep_flag:
+            warn_missing_keys.append(key)
+        else:
+            ignore_missing_keys.append(key)
+
+    missing_keys = warn_missing_keys
+
+    if len(missing_keys) > 0:
+        print("Weights of {} not initialized from pretrained model: {}".format(
+            model.__class__.__name__, missing_keys))
+    if len(unexpected_keys) > 0:
+        print("Weights from pretrained model not used in {}: {}".format(
+            model.__class__.__name__, unexpected_keys))
+    if len(ignore_missing_keys) > 0:
+        print("Ignored weights of {} not initialized from pretrained model: {}".format(
+            model.__class__.__name__, ignore_missing_keys))
+    if len(error_msgs) > 0:
+        print('\n'.join(error_msgs))

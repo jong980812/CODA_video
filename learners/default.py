@@ -136,7 +136,7 @@ class NormalNN(nn.Module):
                 # plt.ylabel("Component 2")
 
                 # # 시각화 결과를 파일로 저장
-                # plt.savefig('query_tokens_tsne_visualization.png', dpi=800)
+                # plt.savefig('clip__query_tokens_tsne_visualization.jpg', dpi=500)
                 # eval update
                 self.log('Epoch:{epoch:.0f}/{total:.0f}'.format(epoch=self.epoch+1,total=self.config['schedule'][-1]))
                 self.log(' * Loss {loss.avg:.3f} | Train Acc {acc.avg:.3f}'.format(loss=losses,acc=acc))
@@ -144,7 +144,7 @@ class NormalNN(nn.Module):
                 # reset
                 losses = AverageMeter()
                 acc = AverageMeter()
-                
+
         self.model.eval()
 
         self.last_valid_out_dim = self.valid_out_dim

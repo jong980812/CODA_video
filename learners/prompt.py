@@ -76,22 +76,38 @@ class Prompt(NormalNN):
         #     self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.schedule, gamma=0.1)
     # Multi-GPU
         if len(self.config['gpuid']) > 1:
-            prompt_params = list(self.model.module.prompt.parameters())+list(self.model.module.last.parameters())
-            # last_params = list(self.model.module.last.parameters())
+            if isinstance(self.model.module.prompt,dict):
+                prompt_params=[]
+                for k,v in (self.model.module.prompt.items()):
+                    prompt_params+=list(self.model.module.prompt[k].parameters())
+            else:
+                prompt_params = list(self.model.module.prompt.parameters())#+list(self.model.last.parameters())
+            last_params = list(self.model.module.last.parameters())
+            
+            # total_param = sum(p.numel() for p in self.model.module.prompt.parameters() if p.requires_grad)+sum(p.numel() for p in self.model.module.last.parameters() if p.requires_grad)
         else:
-            prompt_params = list(self.model.prompt.parameters())+list(self.model.last.parameters())
-            # last_params = list(self.model.last.parameters())
-
+            if isinstance(self.model.prompt,dict):
+                prompt_params=[]
+                for k,v in (self.model.prompt.items()):
+                    prompt_params+=list(self.model.prompt[k].parameters())
+            else:
+                prompt_params = list(self.model.prompt.parameters())#+list(self.model.last.parameters())
+            # total_param = sum(p.numel() for p in self.model.prompt.parameters() if p.requires_grad)+sum(p.numel() for p in self.model.last.parameters() if p.requires_grad)
+            
+            last_params = list(self.model.last.parameters())
+        # print(f'*************** Total param: {total_param}*******************')
         # 기본 파라미터 그룹 설정 (last 제외)
         optimizer_arg = [{'params': prompt_params,
                         'lr': self.config['lr'],
                         'weight_decay': self.config['weight_decay']}]
 
         # # last 파라미터 그룹에 대한 설정 (학습률 100배 증가)
-        # optimizer_arg.append({'params': last_params, 
+        # optimizer_arg=[{'params': last_params, 
         #                     'lr': self.config['lr'], 
-        #                     'weight_decay': self.config['weight_decay']})
-
+        #                     'weight_decay': self.config['weight_decay']}]
+        optimizer_arg.append({'params': last_params, 
+                            'lr': self.config['lr'], 
+                            'weight_decay': self.config['weight_decay']})
         # 옵티마이저별 추가 설정
         if self.config['optimizer'] in ['SGD', 'RMSprop']:
             for arg in optimizer_arg:
@@ -214,7 +230,9 @@ class CODA_adapter(Prompt):
 
     def create_model(self):
         cfg = self.config
-        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'coda_adapter',prompt_param=self.prompt_param)
+        clip = cfg['clip']
+        frame_prompt = cfg['frame_prompt']
+        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'coda_adapter',prompt_param=self.prompt_param,frame_prompt=frame_prompt,clip=clip)
         return model
 
 class L2P_adapter(Prompt):
@@ -224,5 +242,7 @@ class L2P_adapter(Prompt):
 
     def create_model(self):
         cfg = self.config
-        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'l2p_adapter',prompt_param=self.prompt_param)
+        clip = cfg['clip']
+        frame_prompt = cfg['frame_prompt']
+        model = models.__dict__[cfg['model_type']].__dict__[cfg['model_name']](out_dim=self.out_dim, prompt_flag = 'l2p_adapter',prompt_param=self.prompt_param,frame_prompt=frame_prompt,clip=clip)
         return model

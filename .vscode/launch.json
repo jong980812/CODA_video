@@ -9,10 +9,11 @@
             "type": "debugpy",
             "request": "launch",
             "program": "/data/jongseo/project/cil/CODA_video/run.py",
+            "justMyCode": true,
             "console": "integratedTerminal",
             "args": [
                 "--config","configs/ucf-101_prompt.yaml",
-                "--gpuid","0",//"1","2","3","4","5","6","7",
+                "--gpuid","0","1","2","3",//"4","5","6","7",
                 "--repeat","1",
                 "--overwrite","0",
                 "--learner_type","prompt",
@@ -20,7 +21,8 @@
                 "--prompt_param","200","8","0.",
                 "--log_dir","/data/jongseo/project/cil/CODA_video/debug/",
                 "--anno_path","/data/jongseo/project/cil/CODA_video/anno_list/UCF101/20.pkl",
-                "--clip",
+                
+                // "--clip",
             ]
         },
         {
@@ -31,14 +33,15 @@
             "console": "integratedTerminal",
             "args": [
                 "--config","/data/jongseo/project/cil/CODA_video/configs/ssv2_prompt.yaml",
-                "--gpuid","0","1","2","3",//,"4","5","6","7",
+                "--gpuid","0",//"1","2","3",//,"4","5","6","7",
                 "--repeat","1",
                 "--overwrite","1",
                 "--learner_type","prompt",
-                "--learner_name","CODA_video",
-                "--prompt_param","200","8","0.0",
+                "--learner_name","L2P_adapter",
+                "--prompt_param","30","2","1",
                 "--log_dir","/data/jongseo/project/cil/CODA_video/result/mini-ssv2/144_10task_coda_0.3ssv2",
-                "--anno_path","/data/jongseo/project/cil/CODA_video/anno_list/SSV2/ssv2_data_tasks_109_2_0.1.pkl"
+                "--anno_path","/data/jongseo/project/cil/CODA_video/anno_list/SSV2/ssv2_data_tasks_109_2.pkl",
+                "--clip"
             ]
         },
         {
